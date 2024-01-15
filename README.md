@@ -8,7 +8,7 @@
 python train.py
 ```
 
-You can open `train.py` to change the hyper-parameters and others things such as the save_dir and data_dir 
+You can open `train.py` and change the hyper-parameters and others things such as the save_dir and data_dir 
 
 ## Note:
 - This represents only the initial version, with numerous modifications in progress
