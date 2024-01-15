@@ -4,7 +4,8 @@
 ## to lunch training the model run the following 
 
 ```shell
-python train.py```
+python train.py
+```
 
 #### You can open `train.py` to change the hyper-parameters and others things such as the save_dir and data_dir 
 
