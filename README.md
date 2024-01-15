@@ -1,7 +1,7 @@
 # MltuiOrganSeg
 
 
-## to lunch training the model run the following 
+- To lunch training the model run the following 
 
 ```shell
 python train.py
