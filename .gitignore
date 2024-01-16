@@ -1,0 +1,8 @@
+# exclude model files
+*.ipynb
+*.pyc
+
+# exclude output dir
+/Trained_Models/*
+/__pycache__/*
+*/__pycache__/*
