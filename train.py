@@ -6,6 +6,8 @@ from monai.transforms import (
     AsDiscrete,
     Activations,
 )
+
+from monai import transforms
 from monai.metrics import DiceMetric
 from monai.utils.enums import MetricReduction
 from monai.networks.nets import SwinUNETR
@@ -31,14 +33,47 @@ json_list = "/media/jacobo/NewDrive/Hemin_Collection/BraTS2021/brats21_folds.jso
 roi = (128, 128, 128)
 batch_size = 1
 sw_batch_size = 4
-fold = 1
+fold = 0
 infer_overlap = 0.5
-max_epochs = 2
-val_every = 1
+max_epochs = 15
+val_every = 3
+
+# Augmentation methods applied on the training subset
+train_transform = transforms.Compose(
+        [
+            transforms.LoadImaged(keys=["image", "label"]),
+            transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"),
+            transforms.CropForegroundd(
+                keys=["image", "label"],
+                source_key="image",
+                k_divisible=[roi[0], roi[1], roi[2]],
+            ),
+            transforms.RandSpatialCropd(
+                keys=["image", "label"],
+                roi_size=[roi[0], roi[1], roi[2]],
+                random_size=False,
+            ),
+            transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
+            transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=1),
+            transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=2),
+            transforms.NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            transforms.RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
+            transforms.RandShiftIntensityd(keys="image", offsets=0.1, prob=1.0),
+        ]
+    )
+
+# Augmentation methods applied on the validation subset
+val_transform = transforms.Compose(
+        [
+            transforms.LoadImaged(keys=["image", "label"]),
+            transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"),
+            transforms.NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+        ]
+    )
 
 
 # Split the taining dataset to train and validation subsets and load the data with pytroch dataloader function 
-train_loader, val_loader = get_loader(batch_size, data_dir, json_list, fold, roi)
+train_loader, val_loader = get_loader(batch_size, data_dir, json_list, fold, train_transform, val_transform)
 
 # Set the enviroment for the cuda 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -78,6 +113,9 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-5)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs)
 
 start_epoch = 0 
+
+
+
 
 # Exexute training 
 (   val_acc_max,
