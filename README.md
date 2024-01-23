@@ -8,6 +8,13 @@
 python train.py
 ```
 
+
+- To lunch tensorboard run 
+
+```shell
+tensorboard --logdir="path/to/log/"
+```
+
 You can open `train.py` and change the hyper-parameters and others things such as the save_dir and data_dir 
 
 ## Note:
