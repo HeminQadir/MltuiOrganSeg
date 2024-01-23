@@ -32,3 +32,16 @@ def save_checkpoint(model, epoch, filename="model.pt", best_acc=0, dir_add="root
     filename = os.path.join(dir_add, filename)
     torch.save(save_dict, filename)
     print("Saving checkpoint", filename)
+
+
+def normalize_3d_scan(scan):
+    min_val = torch.min(scan)
+    max_val = torch.max(scan)
+
+    normalized_scan = (scan - min_val) / (max_val - min_val)
+
+    return normalized_scan
+
+def count_parameters(model):
+    params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return params/1000000

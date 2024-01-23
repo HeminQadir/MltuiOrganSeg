@@ -3,6 +3,6 @@
 *.pyc
 
 # exclude output dir
-/Trained_Models/*
+/trained_models/*
 /__pycache__/*
 */__pycache__/*

@@ -6,7 +6,6 @@ Task: data loader function
 """
 
 from monai import data
-from monai import transforms
 from .data_split_fold import datafold_read
 
 
@@ -28,7 +27,7 @@ def get_loader(batch_size, data_dir, json_list, fold, train_transform, val_trans
     val_loader = data.DataLoader(
         val_ds,
         batch_size=1,
-        shuffle=False,
+        shuffle=True,
         num_workers=8,
         pin_memory=True,
     )
