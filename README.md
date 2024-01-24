@@ -1,5 +1,13 @@
 # MltuiOrganSeg
 
+
+## Checking the libraries 
+- To check the libraries and thier versions you can run 
+```shell
+python display_config.py
+```
+
+
 ## Train model 
 
 - To lunch training the model run the following 
