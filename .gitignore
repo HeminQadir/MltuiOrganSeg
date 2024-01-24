@@ -1,5 +1,7 @@
 # exclude model files
 main.ipynb
+testing.py
+reading.py
 *.pyc
 
 # exclude output dir
