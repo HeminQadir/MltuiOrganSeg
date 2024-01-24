@@ -48,7 +48,7 @@ fold = 1
 infer_overlap = 0.5
 max_epochs = 100
 val_every = 1
-in_channels = 1
+in_channels = 4
 out_channels = 3
 use_checkpoint = True
 
@@ -57,7 +57,7 @@ train_transform = transforms.Compose(
         [
             transforms.LoadImaged(keys=["image", "label"]),
             transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"),
-            transforms.AddChanneld(keys=["image"]),    # This is needed if in_channels = 1, label does not need this becuase it is 3 classes in case of one class we needed it.
+            #transforms.AddChanneld(keys=["image"]),    # This is needed if in_channels = 1, label does not need this becuase it is 3 classes in case of one class we needed it.
             transforms.CropForegroundd(
                 keys=["image", "label"],
                 source_key="image",
@@ -82,7 +82,7 @@ val_transform = transforms.Compose(
         [
             transforms.LoadImaged(keys=["image", "label"]),
             transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"),
-            transforms.AddChanneld(keys=["image"]), # This is needed if in_channels = 1, label does not need this becuase it is 3 classes in case of one class we needed it. 
+            #transforms.AddChanneld(keys=["image"]), # This is needed if in_channels = 1, label does not need this becuase it is 3 classes in case of one class we needed it. 
             transforms.NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
         ]
     )

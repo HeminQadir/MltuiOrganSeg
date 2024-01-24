@@ -23,7 +23,7 @@ python train.py
 tensorboard --logdir="path/to/log/"
 ```
 
-You can open `train.py` and change the hyper-parameters and others things such as the save_dir and data_dir 
+You can open `train.py` and change the hyper-parameters and others things such as the save_dir and data_dir. Later, I will add args for these hyper-parameters and paths 
 
 ## Note:
 - This represents only the initial version, with numerous modifications in progress
