@@ -8,6 +8,7 @@ Task: helper functions for several tasks
 import os
 import numpy as np  
 import torch
+import random
 
 class AverageMeter(object):
     def __init__(self):
@@ -45,3 +46,34 @@ def normalize_3d_scan(scan):
 def count_parameters(model):
     params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return params/1000000
+
+
+
+def split_list_into_sublists(input_list, k_folds=5):
+    # Randomly shuffle the input list
+    random.shuffle(input_list)
+    
+    # Calculate the number of elements per sublist
+    elements_per_sublist = len(input_list) // k_folds
+    
+    # Calculate the remainder to distribute any remaining elements
+    remainder = len(input_list) % k_folds
+    
+    # Initialize the starting index for slicing
+    start_index = 0
+    
+    # Initialize the list to store sublists
+    sublists = []
+    
+    # Iterate through each sublist
+    for i in range(k_folds):
+        # Calculate the ending index for slicing
+        end_index = start_index + elements_per_sublist + (1 if i < remainder else 0)
+        
+        # Append the sublist to the result list
+        sublists.append(input_list[start_index:end_index])
+        
+        # Update the starting index for the next iteration
+        start_index = end_index
+    
+    return sublists

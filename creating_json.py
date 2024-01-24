@@ -1,21 +1,24 @@
 import os
 import json
-from sklearn.model_selection import KFold
+from utilities.helper import split_list_into_sublists
 
 def create_json(root_directory, k_folds=5):
     # Get a list of subdirectories in the root directory
     subfolders = [f.path for f in os.scandir(root_directory) if f.is_dir()]
 
-    # Initialize k-fold cross-validation
-    kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
+    sublists = split_list_into_sublists(subfolders, k_folds=k_folds)
 
     # Create a list to store the training data
     training_data = []
 
     # Iterate through each fold
-    for fold, (train_index, _) in enumerate(kf.split(subfolders)):
+    #for fold, (train_index, _) in enumerate(kf.split(subfolders)):
+
+    fold = 0
+    for train_index in sublists:
+
         # Select the subdirectories for the current fold
-        fold_subfolders = [subfolders[i] for i in train_index]
+        fold_subfolders = [subfolder for subfolder in train_index]
 
         # Iterate through each subdirectory in the current fold
         for subfolder in fold_subfolders:
@@ -27,6 +30,8 @@ def create_json(root_directory, k_folds=5):
 
             example_data = {"fold": fold, "image": image_files, "label": label_file}
             training_data.append(example_data)
+
+        fold+=1
 
     # Create a dictionary with the "training" key and the training data list
     json_data = {"training": training_data}

@@ -14,6 +14,8 @@ def get_loader(batch_size, data_dir, json_list, fold, train_transform, val_trans
     datalist_json = json_list
     train_files, validation_files = datafold_read(datalist=datalist_json, basedir=data_dir, fold=fold)
 
+    print(train_files)
+
     train_ds = data.Dataset(data=train_files, transform=train_transform)
 
     train_loader = data.DataLoader(

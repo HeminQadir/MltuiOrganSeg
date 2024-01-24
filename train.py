@@ -35,7 +35,7 @@ else:
     print(f"Directory '{root_dir}' already exists.")
 
 # Path to the train dataset 
-data_dir = "/media/jacobo/NewDrive/Hemin_Collection/BraTS2021"
+data_dir = "/media/jacobo/NewDrive/Hemin_Collection/BraTS2021/"
 
 # Path to the JSON file for a list of training samples 
 json_list = "/home/jacobo/MultiOrganSeg/training_data.json" #"/media/jacobo/NewDrive/Hemin_Collection/BraTS2021/brats21_folds.json"
@@ -48,14 +48,16 @@ fold = 1
 infer_overlap = 0.5
 max_epochs = 100
 val_every = 1
-in_channels = 4
+in_channels = 1
 out_channels = 3
+use_checkpoint = True
 
 # Augmentation methods that will be applied on the training subset
 train_transform = transforms.Compose(
         [
             transforms.LoadImaged(keys=["image", "label"]),
             transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"),
+            transforms.AddChanneld(keys=["image"]),    # This is needed if in_channels = 1, label does not need this becuase it is 3 classes in case of one class we needed it.
             transforms.CropForegroundd(
                 keys=["image", "label"],
                 source_key="image",
@@ -80,6 +82,7 @@ val_transform = transforms.Compose(
         [
             transforms.LoadImaged(keys=["image", "label"]),
             transforms.ConvertToMultiChannelBasedOnBratsClassesd(keys="label"),
+            transforms.AddChanneld(keys=["image"]), # This is needed if in_channels = 1, label does not need this becuase it is 3 classes in case of one class we needed it. 
             transforms.NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
         ]
     )
@@ -120,7 +123,7 @@ if SWIN_UNETR:
         drop_rate=0.0,
         attn_drop_rate=0.0,
         dropout_path_rate=0.0,
-        use_checkpoint=True,
+        use_checkpoint=use_checkpoint,
     ).to(device)
 
 

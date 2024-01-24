@@ -45,7 +45,7 @@ def train_epoch(
         )
 
         writer.add_scalar("train/loss", scalar_value=run_loss.avg, global_step=global_step)
-        writer.add_scalar("train/lr", scalar_value=scheduler.get_lr()[0], global_step=global_step)
+        writer.add_scalar("train/lr", scalar_value=scheduler.get_last_lr()[0], global_step=global_step)
 
         start_time = time.time()
     return run_loss.avg

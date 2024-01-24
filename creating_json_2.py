@@ -1,7 +1,7 @@
 
 import os
 import json
-from sklearn.model_selection import KFold
+from utilities.helper import split_list_into_sublists
 
 def create_json(root_directory, k_folds=5):
     # Get a list of files in "imagesTs" and "labelsTr"
@@ -14,22 +14,28 @@ def create_json(root_directory, k_folds=5):
     # Ensure the same number of files in images and labels
     assert len(files_images) == len(files_labels), "Mismatch in the number of image and label files"
 
-    # Initialize k-fold cross-validation
-    kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
+    sublists = split_list_into_sublists(files_images, k_folds=k_folds)
 
     # Create a list to store the training data
     training_data = []
 
     # Iterate through each fold
-    for fold, (train_index, _) in enumerate(kf.split(files_images)):
+    fold = 0
+    for train_index in sublists:
+        print(fold)
+        print(train_index)
+        print("*"*40)
+        
         # Select the files for the current fold
-        fold_files_images = [files_images[i] for i in train_index]
-        fold_files_labels = [files_labels[i] for i in train_index]
+        fold_files_images = [files_image for files_image in train_index]
+        fold_files_labels = [files_label for files_label in train_index]
 
         # Iterate through each file in the current fold
         for file_images, file_labels in zip(fold_files_images, fold_files_labels):
             example_data = {"fold": fold, "image":  file_images, "label": file_labels}
             training_data.append(example_data)
+
+        fold+=1
 
     # Create a dictionary with the "training" key and the training data list
     json_data = {"training": training_data}

@@ -4,5 +4,6 @@ main.ipynb
 
 # exclude output dir
 /trained_models/*
+/logs/*
 /__pycache__/*
 */__pycache__/*
