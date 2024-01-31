@@ -5,7 +5,7 @@ reading.py
 *.pyc
 
 # exclude output dir
-/trained_models/*
-/logs/*
-/__pycache__/*
+trained_models/*
+logs/*
+__pycache__/*
 */__pycache__/*

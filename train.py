@@ -2,7 +2,6 @@
 Author: Hemin Qadir
 Date: 15.01.2024
 Task: this is to lunch model training
-
 """
 import os
 from pathlib import Path
@@ -25,7 +24,7 @@ from utilities.utility import trainer
 from utilities.helper import count_parameters
 
 # Path to save trained models 
-root_dir = "/home/jacobo/MultiOrganSeg/trained_models"
+root_dir = "/home/hemin/MultiOrganSeg/trained_models"
 
 if not os.path.exists(root_dir):
     # Create the directory if it doesn't exist
@@ -35,10 +34,10 @@ else:
     print(f"Directory '{root_dir}' already exists.")
 
 # Path to the train dataset 
-data_dir = "/media/jacobo/NewDrive/Hemin_Collection/BraTS2021/"
+data_dir = "/media/samsung_ssd_1/Hemin_Collection/BraTS2021/"
 
 # Path to the JSON file for a list of training samples 
-json_list = "/home/jacobo/MultiOrganSeg/training_data.json" #"/media/jacobo/NewDrive/Hemin_Collection/BraTS2021/brats21_folds.json"
+json_list = "/home/hemin/MultiOrganSeg/training_data.json" #"/media/jacobo/NewDrive/Hemin_Collection/BraTS2021/brats21_folds.json"
 
 # Model hyper-parameters and input size 
 roi = (128, 128, 128)
@@ -95,7 +94,7 @@ train_loader, val_loader = get_loader(batch_size, data_dir, json_list, fold, tra
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 # Check for GPU and set it if available 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 
 # Help for SwinUNETR
@@ -171,6 +170,8 @@ dice_loss = DiceLoss(to_onehot_y=False, sigmoid=True)
 post_sigmoid = Activations(sigmoid=True)
 post_pred = AsDiscrete(argmax=False, threshold=0.5)
 dice_acc = DiceMetric(include_background=True, reduction=MetricReduction.MEAN_BATCH, get_not_nans=True)
+
+
 model_inferer = partial(
     sliding_window_inference,
     roi_size=[roi[0], roi[1], roi[2]],

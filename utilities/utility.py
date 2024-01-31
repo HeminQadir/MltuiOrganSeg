@@ -14,7 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from .helper import AverageMeter, save_checkpoint, normalize_3d_scan
 
 
-def train_epoch(
+def train_epoch( 
         model,
         writer, 
         scheduler,
@@ -32,6 +32,11 @@ def train_epoch(
     run_loss = AverageMeter()
     for idx, batch_data in enumerate(loader):
         data, target = batch_data["image"].to(device), batch_data["label"].to(device)
+
+        #print(target.shape)
+        #print(target.max())
+        #print(target.min())
+
         logits = model(data)
         loss = loss_func(logits, target)
         loss.backward()
@@ -77,9 +82,9 @@ def val_epoch(
             acc_func(y_pred=val_output_convert, y=val_labels_list)
             acc, not_nans = acc_func.aggregate()
             run_acc.update(acc.cpu().numpy(), n=not_nans.cpu().numpy())
-            dice_tc = run_acc.avg[0]
-            dice_wt = run_acc.avg[1]
-            dice_et = run_acc.avg[2]
+            dice_tc = run_acc.avg #[0]
+            dice_wt = run_acc.avg#[1]
+            dice_et = run_acc.avg#[2]
             print(
                 "Val {}/{} {}/{}".format(epoch, max_epochs, idx, len(loader)),
                 ", dice_tc:",
@@ -127,9 +132,11 @@ def trainer(
     writer = SummaryWriter(log_dir=os.path.join("logs", name))
 
     global_step = 0
+
     for epoch in range(start_epoch, max_epochs):
         print(time.ctime(), "Epoch:", epoch)
         epoch_time = time.time()
+        
         train_loss = train_epoch(
             model,
             writer,
@@ -154,6 +161,7 @@ def trainer(
             loss_epochs.append(train_loss)
             trains_epoch.append(int(epoch))
             epoch_time = time.time()
+
             inputs, targets, outputs, val_acc = val_epoch(
                 model,
                 val_loader,
@@ -166,9 +174,9 @@ def trainer(
                 max_epochs=max_epochs,
             )
 
-            dice_tc = val_acc[0]
-            dice_wt = val_acc[1]
-            dice_et = val_acc[2]
+            dice_tc = val_acc #[0]
+            dice_wt = val_acc #[1]
+            dice_et = val_acc #[2]
             val_avg_acc = np.mean(val_acc)
             print(
                 "Final validation stats {}/{}".format(epoch, max_epochs - 1),
