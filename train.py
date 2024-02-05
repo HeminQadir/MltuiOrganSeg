@@ -122,9 +122,3 @@ trainer(model,
         device)
 
 print("Training is done")
-
-
-
-
-
-

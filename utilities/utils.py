@@ -6,7 +6,7 @@ from .helper import save_checkpoint
 from torch.utils.tensorboard import SummaryWriter
 import os 
 
-def validation(model, val_loader, device, post_pred, post_label, dice_metric):
+def validation(model, writer, epoch, val_loader, device, post_pred, post_label, dice_metric):
     model.eval()
     with torch.no_grad():
         for val_data in val_loader:
@@ -23,15 +23,28 @@ def validation(model, val_loader, device, post_pred, post_label, dice_metric):
 
             val_outputs = [post_pred(i) for i in decollate_batch(val_outputs)]
             val_labels = [post_label(i) for i in decollate_batch(val_labels)]
+
             # compute metric for current iteration
             dice_metric(y_pred=val_outputs, y=val_labels)
-    return  
+
+            # aggregate the final mean dice result
+            metric = dice_metric.aggregate().item()
+            # reset the status for next validation round
+            dice_metric.reset()
+
+            writer.add_image('Prediction {}', torch.argmax(val_outputs, dim=1)[0, :, :, 80], global_step=epoch) #, dataformats='HW')
+
+            writer.add_image('Input Scan {}', val_inputs[0, 0, :, :, 80], global_step=epoch) #, dataformats='WH')
+
+            writer.add_image('Ground Truth {}', val_labels[0, 0, :, :, 80], global_step=epoch) #, dataformats='HW')
+
+    return metric
 
 
 def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epoch, max_epochs, post_pred, post_label, dice_metric, val_interval, root_dir, device):
     best_metric = -1
     best_metric_epoch = -1
-    metric_values = []
+    # metric_values = []
     epoch_loss_values = []
     global_step = 0
     name = name = "spleen"
@@ -75,13 +88,9 @@ def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epo
         #writer.add_scalar("train/lr", scalar_value=scheduler.get_last_lr()[0], global_step=global_step)
 
         if (epoch + 1) % val_interval == 0:
-            validation(model, val_loader, device, post_pred, post_label, dice_metric)
-            # aggregate the final mean dice result
-            metric = dice_metric.aggregate().item()
-            # reset the status for next validation round
-            dice_metric.reset()
+            metric = validation(model, writer, epoch, val_loader, device, post_pred, post_label, dice_metric)
 
-            metric_values.append(metric)
+            # metric_values.append(metric)
 
             if metric > best_metric:
                 best_metric = metric
