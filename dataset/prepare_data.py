@@ -82,7 +82,7 @@ def data_loader_and_transforms(train_files, val_files, spatial_size, pix_dim, a_
 
 
     train_loader = DataLoader(train_ds, batch_size=2, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_ds, batch_size=1, num_workers=4)
+    val_loader = DataLoader(val_ds, batch_size=1, shuffle=True, num_workers=4)
 
 
     return train_loader, val_loader

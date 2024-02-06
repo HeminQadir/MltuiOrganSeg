@@ -24,7 +24,7 @@ from pathlib import Path
 
 
 # Path to save trained models 
-root_dir = "/home/hemin/spleen_segmentation"
+root_dir = "/home/heminq/spleen_segmentation"
 
 model_dir = os.path.join(root_dir, "models")
 
@@ -37,7 +37,7 @@ else:
 
 
 max_epochs = 600
-val_interval = 2
+val_interval = 10
 pix_dim = (1.5, 1.5, 2.0)    #pixdim=(1.5, 1.5, 1.0)
 a_min = -200
 a_max =  200
@@ -45,7 +45,7 @@ spatial_size = (96, 96, 96)
 cache =  True
 
 # Path to the train dataset 
-data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen"
+data_dir = "/home/heminq/Decath_Spleen/Task09_Spleen"
 train_images = sorted(glob.glob(os.path.join(data_dir, "imagesTr", "*.nii.gz")))
 train_labels = sorted(glob.glob(os.path.join(data_dir, "labelsTr", "*.nii.gz")))
 data_dicts = [{"image": image_name, "label": label_name} for image_name, label_name in zip(train_images, train_labels)]
