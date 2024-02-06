@@ -7,29 +7,6 @@ from torch.utils.tensorboard import SummaryWriter
 import os 
 import matplotlib.pyplot as plt
 
-def validation1(model, writer, epoch, val_loader, device, post_pred, post_label, dice_metric):
-    model.eval()
-    with torch.no_grad():
-        for i, val_data in enumerate(val_loader):
-            roi_size = (160, 160, 160)
-            sw_batch_size = 4
-            val_outputs = sliding_window_inference(val_data["image"].to(device), roi_size, sw_batch_size, model)
-            # plot the slice [:, :, 80]
-            plt.figure("check", (18, 6))
-            plt.subplot(1, 3, 1)
-            plt.title(f"image {i}")
-            plt.imshow(val_data["image"][0, 0, :, :, 80], cmap="gray")
-            plt.subplot(1, 3, 2)
-            plt.title(f"label {i}")
-            plt.imshow(val_data["label"][0, 0, :, :, 80])
-            plt.subplot(1, 3, 3)
-            plt.title(f"output {i}")
-            plt.imshow(torch.argmax(val_outputs, dim=1).detach().cpu()[0, :, :, 80])
-            plt.show()
-            if i == 2:
-                break
-    
-
 
 def validation(model, writer, epoch, val_loader, device, post_pred, post_label, dice_metric):
     model.eval()
@@ -75,7 +52,9 @@ def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epo
     # metric_values = []
     epoch_loss_values = []
     global_step = 0
-    name = name = "spleen"
+
+    name = "spleen"
+    
     writer = SummaryWriter(log_dir=os.path.join("logs", name))
 
     for epoch in range(start_epoch, max_epochs):

@@ -38,6 +38,7 @@ else:
 
 max_epochs = 600
 val_interval = 10
+
 pix_dim = (1.5, 1.5, 2.0)    #pixdim=(1.5, 1.5, 1.0)
 a_min = -200
 a_max =  200
@@ -99,7 +100,7 @@ print("Strating epoch is: {}".format(start_epoch))
 
 # Define the optimizer and loss function
 loss_function = loss_function = DiceLoss(to_onehot_y=True, softmax=True)
-optimizer = optimizer = torch.optim.Adam(model.parameters(), 1e-4) #torch.optim.Adam(model.parameters(), 1e-5, weight_decay=1e-5, amsgrad=True)
+optimizer = torch.optim.Adam(model.parameters(), 1e-4) #torch.optim.Adam(model.parameters(), 1e-5, weight_decay=1e-5, amsgrad=True)
 
 dice_metric = DiceMetric(include_background=False, reduction="mean")
 
