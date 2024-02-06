@@ -2,10 +2,13 @@
 main.ipynb
 testing.py
 reading.py
+backup.py
+clean.sh
+spleen_segmentation.ipynb
 *.pyc
 
 # exclude output dir
-trained_models/*
-logs/*
+*/models/*
+*/logs/*
 __pycache__/*
 */__pycache__/*
