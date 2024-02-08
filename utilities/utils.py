@@ -25,10 +25,6 @@ def validation(model, writer, epoch, val_loader, device, post_pred, post_label, 
             val_outputs_ = [post_pred(i) for i in decollate_batch(val_outputs)]
             val_labels_ = [post_label(i) for i in decollate_batch(val_labels)]
 
-            #print("#"*50)
-            #print(val_outputs_[0].shape)
-            #print("#"*50)
-            #print(val_labels_[0].shape)
             # compute metric for current iteration
             dice_metric(y_pred=val_outputs_, y=val_labels_)
 
@@ -46,7 +42,7 @@ def validation(model, writer, epoch, val_loader, device, post_pred, post_label, 
     return metric
 
 
-def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epoch, max_epochs, post_pred, post_label, dice_metric, val_interval, root_dir, device):
+def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epoch, max_epochs, post_pred, post_label, dice_metric, val_interval, root_dir, scheduler, device):
     best_metric = -1
     best_metric_epoch = -1
     # metric_values = []
@@ -92,7 +88,7 @@ def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epo
         
         
         writer.add_scalar("train/loss", scalar_value=torch.tensor(epoch_loss), global_step=global_step)
-        #writer.add_scalar("train/lr", scalar_value=scheduler.get_last_lr()[0], global_step=global_step)
+        writer.add_scalar("train/lr", scalar_value=scheduler.get_last_lr()[0], global_step=global_step)
 
         if (epoch + 1) % val_interval == 0:
             metric =  validation(model, writer, epoch, val_loader, device, post_pred, post_label, dice_metric)
@@ -117,3 +113,7 @@ def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epo
             )
 
             writer.add_scalar("test/Average Accuracy:", scalar_value=torch.tensor(metric), global_step=epoch+1)
+
+        scheduler.step()
+        
+        writer.close()

@@ -20,11 +20,12 @@ import glob
 from utilities.helper import count_parameters
 from utilities.utils import trainer 
 from dataset.prepare_data import data_loader_and_transforms
+from dataset.data_split_fold import datafold_read
 from pathlib import Path
 
 
 # Path to save trained models 
-root_dir = "/home/heminq/spleen_segmentation"
+root_dir = "/home/hemin/MultiOrganSeg"
 
 model_dir = os.path.join(root_dir, "models")
 
@@ -46,13 +47,30 @@ spatial_size = (96, 96, 96)
 cache =  True
 
 # Path to the train dataset 
-data_dir = "/home/heminq/Decath_Spleen/Task09_Spleen"
-train_images = sorted(glob.glob(os.path.join(data_dir, "imagesTr", "*.nii.gz")))
-train_labels = sorted(glob.glob(os.path.join(data_dir, "labelsTr", "*.nii.gz")))
-data_dicts = [{"image": image_name, "label": label_name} for image_name, label_name in zip(train_images, train_labels)]
-train_files, val_files = data_dicts[:-9], data_dicts[-9:]
+data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen"
+
+use_json = True
+
+if use_json:
+    # Path to the JSON file for a list of training samples 
+    json_list = "/home/hemin/MultiOrganSeg/dataset/training_data.json"
+    fold = 1
+    train_files, val_files = datafold_read(datalist=json_list, basedir=data_dir, fold=fold)
+    hemin = [{'fold': 4, 'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_47.nii.gz', 'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_47.nii.gz'}, 
+             {'fold': 4, 'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_28.nii.gz',  'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_28.nii.gz'},
+             {'fold': 4, 'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_22.nii.gz', 'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_22.nii.gz'}]
+
+else: 
+    train_images = sorted(glob.glob(os.path.join(data_dir, "imagesTr", "*.nii.gz")))
+    train_labels = sorted(glob.glob(os.path.join(data_dir, "labelsTr", "*.nii.gz")))
+    data_dicts = [{"image": image_name, "label": label_name} for image_name, label_name in zip(train_images, train_labels)]
+    train_files, val_files = data_dicts[:-9], data_dicts[-9:]
+
+    hemin = [{'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_52.nii.gz', 'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/labelsTr/spleen_52.nii.gz'},
+             {'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_53.nii.gz', 'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/labelsTr/spleen_53.nii.gz'}]
 
 
+print(train_files)
 # For reproducibility
 set_determinism(seed=0)
 
@@ -100,7 +118,8 @@ print("Strating epoch is: {}".format(start_epoch))
 
 # Define the optimizer and loss function
 loss_function = loss_function = DiceLoss(to_onehot_y=True, softmax=True)
-optimizer = torch.optim.Adam(model.parameters(), 1e-4) #torch.optim.Adam(model.parameters(), 1e-5, weight_decay=1e-5, amsgrad=True)
+optimizer = torch.optim.Adam(model.parameters(), 1e-5, weight_decay=1e-5, amsgrad=True)    #torch.optim.Adam(model.parameters(), 1e-4) #
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs, eta_min=1e-10)
 
 dice_metric = DiceMetric(include_background=False, reduction="mean")
 
@@ -120,6 +139,7 @@ trainer(model,
         dice_metric, 
         val_interval, 
         model_dir, 
+        scheduler,
         device)
 
 print("Training is done")
