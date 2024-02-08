@@ -14,21 +14,27 @@ def get_loader(batch_size, data_dir, json_list, fold, train_transform, val_trans
     datalist_json = json_list
     train_files, validation_files = datafold_read(datalist=datalist_json, basedir=data_dir, fold=fold)
 
-    train_ds = data.Dataset(data=train_files, transform=train_transform)
+    print(train_files)
+
+    #train_ds = data.Dataset(data=train_files, transform=train_transform)
+    train_ds = data.CacheDataset(data=train_files, transform=train_transform, cache_rate=0.5, num_workers=4)
 
     train_loader = data.DataLoader(
         train_ds,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=8,
+        num_workers=4,
         pin_memory=True,
     )
-    val_ds = data.Dataset(data=validation_files, transform=val_transform)
+    
+    #val_ds = data.Dataset(data=validation_files, transform=val_transform)
+    val_ds = data.CacheDataset(data=validation_files, transform=val_transform, cache_rate=0.5, num_workers=4)
+
     val_loader = data.DataLoader(
         val_ds,
         batch_size=1,
         shuffle=True,
-        num_workers=8,
+        num_workers=4,
         pin_memory=True,
     )
 

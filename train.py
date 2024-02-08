@@ -90,6 +90,8 @@ val_transform = transforms.Compose(
 # Split the taining dataset to train and validation subsets and load the data with pytroch dataloader function 
 train_loader, val_loader = get_loader(batch_size, data_dir, json_list, fold, train_transform, val_transform)
 
+print(train_loader)
+
 # Set the enviroment for the cuda 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
