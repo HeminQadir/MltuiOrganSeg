@@ -22,7 +22,7 @@ from utilities.utils import trainer
 from dataset.prepare_data import data_loader_and_transforms
 from dataset.data_split_fold import datafold_read
 from pathlib import Path
-
+import random
 
 # Path to save trained models 
 root_dir = "/home/hemin/MultiOrganSeg"
@@ -37,7 +37,7 @@ else:
     print(f"Directory '{model_dir}' already exists.")
 
 
-max_epochs = 600
+max_epochs = 1600
 val_interval = 10
 
 pix_dim = (1.5, 1.5, 2.0)    #pixdim=(1.5, 1.5, 1.0)
@@ -47,33 +47,38 @@ spatial_size = (96, 96, 96)
 cache =  True
 
 # Path to the train dataset 
-data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen"
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_brain/Bask01_Brain"                   #Brain
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Heart/Task02_Heart"                   #Heart
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Liver/Task03_Liver"                   #Liver
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Hippocampus/Task04_Hippocampus"       #Hippocampus
+data_dir = "/media/samsung_ssd_1/Medical_Dataset//Decath_Pancreas/Task05_Pancreas"            #Pancreas
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Lung/Task06_Lung"                     #Lung
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Prostate/Task07_Prostate"             #Prostate
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_HepaticVessel/Task08_HepaticVes"      #HepaticVessel
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen"                 #Spleen
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Colon/Task10_Colon"                    #Colon
 
-use_json = True
+use_json = False
 
 if use_json:
     # Path to the JSON file for a list of training samples 
     json_list = "/home/hemin/MultiOrganSeg/dataset/training_data.json"
-    fold = 1
+    fold = 0
     train_files, val_files = datafold_read(datalist=json_list, basedir=data_dir, fold=fold)
-    hemin = [{'fold': 4, 'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_47.nii.gz', 'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_47.nii.gz'}, 
-             {'fold': 4, 'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_28.nii.gz',  'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_28.nii.gz'},
-             {'fold': 4, 'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_22.nii.gz', 'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_22.nii.gz'}]
 
 else: 
     train_images = sorted(glob.glob(os.path.join(data_dir, "imagesTr", "*.nii.gz")))
     train_labels = sorted(glob.glob(os.path.join(data_dir, "labelsTr", "*.nii.gz")))
     data_dicts = [{"image": image_name, "label": label_name} for image_name, label_name in zip(train_images, train_labels)]
-    train_files, val_files = data_dicts[:-9], data_dicts[-9:]
+    # Shuffle the list 
+    random.shuffle(data_dicts) 
+    train_files, val_files = data_dicts[:-30], data_dicts[-30:]
 
-    hemin = [{'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_52.nii.gz', 'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/labelsTr/spleen_52.nii.gz'},
-             {'image': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/imagesTr/spleen_53.nii.gz', 'label': '/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen/labelsTr/spleen_53.nii.gz'}]
-
-
-print(train_files)
 # For reproducibility
 set_determinism(seed=0)
 
+
+print(train_files)
 
 train_loader, val_loader = data_loader_and_transforms(train_files, val_files, spatial_size, pix_dim, a_min, a_max, do_cache=cache)
 
@@ -118,14 +123,13 @@ print("Strating epoch is: {}".format(start_epoch))
 
 # Define the optimizer and loss function
 loss_function = loss_function = DiceLoss(to_onehot_y=True, softmax=True)
-optimizer = torch.optim.Adam(model.parameters(), 1e-5, weight_decay=1e-5, amsgrad=True)    #torch.optim.Adam(model.parameters(), 1e-4) #
+optimizer = torch.optim.Adam(model.parameters(), 1e-4, weight_decay=1e-5, amsgrad=True)    #torch.optim.Adam(model.parameters(), 1e-4) #torch.optim.Adam(model.parameters(), 1e-4) 
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs, eta_min=1e-10)
 
 dice_metric = DiceMetric(include_background=False, reduction="mean")
 
 post_pred = Compose([AsDiscrete(argmax=True, to_onehot=2)])
 post_label = Compose([AsDiscrete(to_onehot=2)])
-
 
 trainer(model, 
         train_loader, 

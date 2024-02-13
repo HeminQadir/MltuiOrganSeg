@@ -1,11 +1,12 @@
 from monai.data import CacheDataset, DataLoader, Dataset, decollate_batch
-
+import numpy as np
 from monai.transforms import (
     EnsureChannelFirstd,
     Compose,
     CropForegroundd,
     LoadImaged,
     Orientationd,
+    RandAffined,
     RandCropByPosNegLabeld,
     SaveImaged,
     Resized,
@@ -33,23 +34,25 @@ def data_loader_and_transforms(train_files, val_files, spatial_size, pix_dim, a_
             CropForegroundd(keys=["image", "label"], source_key="image"),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(keys=["image", "label"], pixdim=pix_dim, mode=("bilinear", "nearest")),
-            RandCropByPosNegLabeld(
-                keys=["image", "label"],
-                label_key="label",
-                spatial_size=spatial_size,
-                pos=1,
-                neg=1,
-                num_samples=4,
-                image_key="image",
-                image_threshold=0,
-            ),
+            # RandCropByPosNegLabeld(
+            #     keys=["image", "label"],
+            #     label_key="label",
+            #     spatial_size=spatial_size,
+            #     pos=1,
+            #     neg=1,
+            #     num_samples=4,
+            #     allow_smaller=True,
+            #     image_key="image",
+            #     image_threshold=0,
+            # ),
+            Resized(keys=["image", "label"], spatial_size=spatial_size, mode=("trilinear", "nearest")),
             # user can also add other random transforms
-            # RandAffined(
-            #     keys=['image', 'label'],
-            #     mode=('bilinear', 'nearest'),
-            #     prob=1.0, spatial_size=(96, 96, 96),
-            #     rotate_range=(0, 0, np.pi/15),
-            #     scale_range=(0.1, 0.1, 0.1)),
+            RandAffined(
+                keys=['image', 'label'],
+                mode=('bilinear', 'nearest'),
+                prob=1.0, spatial_size=(96, 96, 96),
+                rotate_range=(0, 0, np.pi/15),
+                scale_range=(0.1, 0.1, 0.1)),
         ]
     )
     val_transforms = Compose(
@@ -67,8 +70,11 @@ def data_loader_and_transforms(train_files, val_files, spatial_size, pix_dim, a_
             CropForegroundd(keys=["image", "label"], source_key="image"),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(keys=["image", "label"], pixdim=pix_dim, mode=("bilinear", "nearest")),
+            Resized(keys=["image", "label"], spatial_size=spatial_size, mode=("trilinear", "nearest")),
         ]
     )
+
+    
 
     if do_cache:
         # use batch_size=2 to load images and use RandCropByPosNegLabeld
@@ -81,8 +87,8 @@ def data_loader_and_transforms(train_files, val_files, spatial_size, pix_dim, a_
         val_ds = Dataset(data=val_files, transform=val_transforms)
 
 
-    train_loader = DataLoader(train_ds, batch_size=2, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_ds, batch_size=1, shuffle=True, num_workers=4)
-
+    train_loader = DataLoader(train_ds, batch_size=2, shuffle=True, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(val_ds, batch_size=1, shuffle=True, num_workers=4, pin_memory=True)
+    
 
     return train_loader, val_loader

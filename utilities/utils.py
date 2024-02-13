@@ -4,6 +4,7 @@ from monai.data import decollate_batch
 from monai.inferers import sliding_window_inference
 from .helper import save_checkpoint
 from torch.utils.tensorboard import SummaryWriter
+from torchvision.utils import make_grid
 import os 
 import matplotlib.pyplot as plt
 
@@ -18,7 +19,7 @@ def validation(model, writer, epoch, val_loader, device, post_pred, post_label, 
             val_inputs = val_data["image"].to(device)
             val_labels = val_data["label"].to(device)
 
-            #val_labels = val_labels != 0 # This is very important 
+            val_labels = val_labels != 0 # This is very important 
 
             val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model)
 
@@ -33,11 +34,21 @@ def validation(model, writer, epoch, val_loader, device, post_pred, post_label, 
             # reset the status for next validation round
             dice_metric.reset()
 
-            writer.add_image('Prediction {}'.format(j), torch.argmax(val_outputs, dim=1)[0, :, :, 80], global_step=epoch, dataformats='HW')
+            # Concatenate the images along the specified dimension (dimension=2 for horizontal concatenation)
+            concatenated_images = make_grid([
+                val_inputs[0, 0, :, :, 80].unsqueeze(0),
+                val_labels[0, 0, :, :, 80].unsqueeze(0), 
+                torch.argmax(val_outputs, dim=1)[0, :, :, 80].unsqueeze(0),  
+                ], nrow=3, padding=50) #, normalize=True, scale_each=True)
 
-            writer.add_image('Input Scan {}'.format(j), val_inputs[0, 0, :, :, 80], global_step=epoch, dataformats='WH')
+            # Add the concatenated image to tensorboard
+            writer.add_image('Combined Images {}'.format(j), concatenated_images, global_step=epoch, dataformats='CHW')
 
-            writer.add_image('Ground Truth {}'.format(j), val_labels[0, 0, :, :, 80], global_step=epoch, dataformats='HW')
+            #writer.add_image('Prediction {}'.format(j), torch.argmax(val_outputs, dim=1)[0, :, :, 80], global_step=epoch, dataformats='HW')
+
+            #writer.add_image('Input Scan {}'.format(j), val_inputs[0, 0, :, :, 80], global_step=epoch, dataformats='WH')
+
+            #writer.add_image('Ground Truth {}'.format(j), val_labels[0, 0, :, :, 80], global_step=epoch, dataformats='HW')
 
     return metric
 
@@ -66,8 +77,7 @@ def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epo
             inputs = batch_data["image"].to(device)
 
             labels = batch_data["label"].to(device)
-
-            # label = label != 0 # This is very important 
+            labels = labels != 0 # This is very important
 
             optimizer.zero_grad()
             outputs = model(inputs)
