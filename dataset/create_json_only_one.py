@@ -82,6 +82,6 @@ def create_json(root_directory, k_folds=5):
 
 
 if __name__ == "__main__":
-    root_directory = "/media/samsung_ssd_1/Medical_Dataset/Decath_Colon/Task10_Colon"  # Replace with the actual path to your root directory
+    root_directory = "/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen"    #"/media/samsung_ssd_1/Medical_Dataset/Decath_Colon/Task10_Colon"  # Replace with the actual path to your root directory
     create_json(root_directory)
 

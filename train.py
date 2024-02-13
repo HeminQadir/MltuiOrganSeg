@@ -10,7 +10,7 @@ from monai.transforms import (
     Compose,
 )
 
-from monai.networks.nets import UNet
+#from monai.networks.nets import UNet
 from monai.networks.layers import Norm
 from monai.metrics import DiceMetric
 from monai.losses import DiceLoss
@@ -21,8 +21,10 @@ from utilities.helper import count_parameters
 from utilities.utils import trainer 
 from dataset.prepare_data import data_loader_and_transforms
 from dataset.data_split_fold import datafold_read
+from nets.unet import UNet
 from pathlib import Path
 import random
+import clip 
 
 # Path to save trained models 
 root_dir = "/home/hemin/MultiOrganSeg"
@@ -51,14 +53,14 @@ cache =  True
 #data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Heart/Task02_Heart"                   #Heart
 #data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Liver/Task03_Liver"                   #Liver
 #data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Hippocampus/Task04_Hippocampus"       #Hippocampus
-data_dir = "/media/samsung_ssd_1/Medical_Dataset//Decath_Pancreas/Task05_Pancreas"            #Pancreas
+#data_dir = "/media/samsung_ssd_1/Medical_Dataset//Decath_Pancreas/Task05_Pancreas"            #Pancreas
 #data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Lung/Task06_Lung"                     #Lung
 #data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Prostate/Task07_Prostate"             #Prostate
 #data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_HepaticVessel/Task08_HepaticVes"      #HepaticVessel
-#data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen"                 #Spleen
+data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Spleen/Task09_Spleen"                 #Spleen
 #data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_Colon/Task10_Colon"                    #Colon
 
-use_json = False
+use_json = True
 
 if use_json:
     # Path to the JSON file for a list of training samples 
@@ -86,7 +88,7 @@ train_loader, val_loader = data_loader_and_transforms(train_files, val_files, sp
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 # Check for GPU and set it if available 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # standard PyTorch program style: create UNet, DiceLoss and Adam optimizer
@@ -131,7 +133,13 @@ dice_metric = DiceMetric(include_background=False, reduction="mean")
 post_pred = Compose([AsDiscrete(argmax=True, to_onehot=2)])
 post_label = Compose([AsDiscrete(to_onehot=2)])
 
+# CLIP model for text embedding
+clip_model, preprocess = clip.load('ViT-B/32', device)
+text_input = clip.tokenize(f'A computerized tomography scan  segment tumor').to(device)
+text_embedding = clip_model.encode_text(text_input)
+
 trainer(model, 
+        text_embedding,
         train_loader, 
         val_loader, 
         optimizer, 

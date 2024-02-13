@@ -1,7 +1,8 @@
 
 import torch 
 from monai.data import decollate_batch
-from monai.inferers import sliding_window_inference
+#from monai.inferers import sliding_window_inference
+from nets.inferance import sliding_window_inference
 from .helper import save_checkpoint
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
@@ -9,7 +10,7 @@ import os
 import matplotlib.pyplot as plt
 
 
-def validation(model, writer, epoch, val_loader, device, post_pred, post_label, dice_metric):
+def validation(model, text_embedding, writer, epoch, val_loader, device, post_pred, post_label, dice_metric):
     model.eval()
     with torch.no_grad():
         for j, val_data in enumerate(val_loader):
@@ -21,7 +22,7 @@ def validation(model, writer, epoch, val_loader, device, post_pred, post_label, 
 
             val_labels = val_labels != 0 # This is very important 
 
-            val_outputs = sliding_window_inference(val_inputs, roi_size, sw_batch_size, model)
+            val_outputs = sliding_window_inference(val_inputs, text_embedding, roi_size, sw_batch_size, model)
 
             val_outputs_ = [post_pred(i) for i in decollate_batch(val_outputs)]
             val_labels_ = [post_label(i) for i in decollate_batch(val_labels)]
@@ -45,15 +46,13 @@ def validation(model, writer, epoch, val_loader, device, post_pred, post_label, 
             writer.add_image('Combined Images {}'.format(j), concatenated_images, global_step=epoch, dataformats='CHW')
 
             #writer.add_image('Prediction {}'.format(j), torch.argmax(val_outputs, dim=1)[0, :, :, 80], global_step=epoch, dataformats='HW')
-
             #writer.add_image('Input Scan {}'.format(j), val_inputs[0, 0, :, :, 80], global_step=epoch, dataformats='WH')
-
             #writer.add_image('Ground Truth {}'.format(j), val_labels[0, 0, :, :, 80], global_step=epoch, dataformats='HW')
 
     return metric
 
 
-def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epoch, max_epochs, post_pred, post_label, dice_metric, val_interval, root_dir, scheduler, device):
+def trainer(model, text_embedding, train_loader, val_loader, optimizer, loss_function, start_epoch, max_epochs, post_pred, post_label, dice_metric, val_interval, root_dir, scheduler, device):
     best_metric = -1
     best_metric_epoch = -1
     # metric_values = []
@@ -80,7 +79,7 @@ def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epo
             labels = labels != 0 # This is very important
 
             optimizer.zero_grad()
-            outputs = model(inputs)
+            outputs = model(inputs, text_embedding)
 
             loss = loss_function(outputs, labels)
 
@@ -101,7 +100,7 @@ def trainer(model, train_loader, val_loader, optimizer, loss_function, start_epo
         writer.add_scalar("train/lr", scalar_value=scheduler.get_last_lr()[0], global_step=global_step)
 
         if (epoch + 1) % val_interval == 0:
-            metric =  validation(model, writer, epoch, val_loader, device, post_pred, post_label, dice_metric)
+            metric =  validation(model, text_embedding, writer, epoch, val_loader, device, post_pred, post_label, dice_metric)
 
             # metric_values.append(metric)
 

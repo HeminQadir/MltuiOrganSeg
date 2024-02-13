@@ -12,15 +12,22 @@ ORGAN_NAME = ['Spleen', 'Right Kidney', 'Left Kidney', 'Gall Bladder', 'Esophagu
                 'Kidney Tumor', 'Liver Tumor', 'Pancreas Tumor', 'Hepatic Vessel Tumor', 'Lung Tumor', 
                 'Colon Tumor', 'Kidney Cyst']
 
+print(len(ORGAN_NAME))
 # Load the model
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model, preprocess = clip.load('ViT-B/32', device)
 
+model, preprocess = clip.load('ViT-B/32', device)
 
 text_inputs = torch.cat([clip.tokenize(f'A computerized tomography of a {item}') for item in ORGAN_NAME]).to(device)
 
+
+
+text_input = clip.tokenize(f'A computerized tomography scan  segment tumor').to(device)
+
+print(text_input)
+
 # Calculate text embedding features
 with torch.no_grad():
-    text_features = model.encode_text(text_inputs)
+    text_features = model.encode_text(text_input)
     print(text_features.shape, text_features.dtype)
     torch.save(text_features, 'txt_encoding.pth')

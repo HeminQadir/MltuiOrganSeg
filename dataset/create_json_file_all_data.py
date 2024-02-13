@@ -93,7 +93,7 @@ def create_json(root_directory, k_folds=5):
 
 
     # Write the JSON string to a file
-    with open("training_data.json", "w") as json_file:
+    with open("training_data_all.json", "w") as json_file:
         json_file.write(json_string)
 
 
