@@ -87,7 +87,7 @@ print(train_files)
 train_loader, val_loader = data_loader_and_transforms(train_files, val_files, spatial_size, pix_dim, a_min, a_max, do_cache=cache)
 
 # Set the enviroment for the cuda 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 # Check for GPU and set it if available 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -104,9 +104,9 @@ model = UNet(
     norm=Norm.BATCH,
 ).to(device)
 
+
+
 print("="*10)
-
-
 print("*"*20)
 print(model)
 num_params = count_parameters(model)

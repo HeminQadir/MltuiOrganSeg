@@ -14,6 +14,9 @@ ORGAN_NAME = ['Spleen', 'Right Kidney', 'Left Kidney', 'Gall Bladder', 'Esophagu
 
 # Load the model
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+print("*"*50)
+print(device)
 model, preprocess = clip.load('ViT-B/32', device)
 
 
