@@ -11,6 +11,7 @@ from monai.transforms import (
 )
 
 #from monai.networks.nets import UNet
+from nets.unet import UNet
 from monai.networks.layers import Norm
 from monai.metrics import DiceMetric
 from monai.losses import DiceLoss
@@ -21,10 +22,11 @@ from utilities.helper import count_parameters
 from utilities.utils import trainer 
 from dataset.prepare_data import data_loader_and_transforms
 from dataset.data_split_fold import datafold_read
-from nets.unet import UNet
 from pathlib import Path
 import random
 import clip 
+from monai.networks.blocks.text_embedding import TextEncoder
+import inspect
 
 # Path to save trained models 
 root_dir = "/home/hemin/MultiOrganSeg"
@@ -40,13 +42,13 @@ else:
 
 
 max_epochs = 1600
-val_interval = 10
+val_interval = 1
 
 pix_dim = (1.5, 1.5, 2.0)    #pixdim=(1.5, 1.5, 1.0)
 a_min = -200
 a_max =  200
 spatial_size = (96, 96, 96)
-cache =  True
+cache =  False
 
 # Path to the train dataset 
 #data_dir = "/media/samsung_ssd_1/Medical_Dataset/Decath_brain/Bask01_Brain"                   #Brain
@@ -98,16 +100,25 @@ model = UNet(
     out_channels=2,
     channels=(16, 32, 64, 128, 256),
     strides=(2, 2, 2, 2),
-    num_res_units=2,
+    num_res_units=0,
     norm=Norm.BATCH,
 ).to(device)
 
+print("="*10)
 
-print("*"*10)
+
+print("*"*20)
 print(model)
 num_params = count_parameters(model)
-print("Total number of model parameters: {} M".format(num_params))
 print("*"*10)
+# Get the parameters of the forward method
+forward_parameters = inspect.signature(model.forward).parameters
+# Print the names of the parameters
+parameter_names = list(forward_parameters.keys())
+print(f"Forward method parameter names: {parameter_names}")
+print("*"*10)
+print("Total number of model parameters: {} M".format(num_params))
+print("*"*20)
 
 
 # Check for the last checkpoint in the model directory 
@@ -133,10 +144,18 @@ dice_metric = DiceMetric(include_background=False, reduction="mean")
 post_pred = Compose([AsDiscrete(argmax=True, to_onehot=2)])
 post_label = Compose([AsDiscrete(to_onehot=2)])
 
-# CLIP model for text embedding
-clip_model, preprocess = clip.load('ViT-B/32', device)
-text_input = clip.tokenize(f'A computerized tomography scan  segment tumor').to(device)
-text_embedding = clip_model.encode_text(text_input)
+
+do_clip = True
+if do_clip:
+    # CLIP model for text embedding
+    clip_model, preprocess = clip.load('ViT-B/32', device)
+    text_input = clip.tokenize(f'A computerized tomography scan  segment tumor').to(device)
+    text_embedding = clip_model.encode_text(text_input)
+else:
+    text_embedding = "I am here to saty"
+# it is important to take a look at this 
+#txt_model = TextEncoder(out_channels=1)
+#print(txt_model())
 
 trainer(model, 
         text_embedding,
@@ -155,3 +174,4 @@ trainer(model,
         device)
 
 print("Training is done")
+

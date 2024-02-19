@@ -17,14 +17,23 @@ from collections.abc import Sequence
 import torch
 import torch.nn as nn
 
-from monai.networks.blocks.convolutions import Convolution, ResidualUnit
+#from monai.networks.blocks.convolutions import Convolution, ResidualUnit
+from .convoluions import Convolution, ResidualUnit
 from monai.networks.layers.factories import Act, Norm
-from monai.networks.layers.simplelayers import SkipConnection
+#from monai.networks.layers.simplelayers import SkipConnection
+from .simplelayers import SkipConnection
 from monai.utils import alias, export
+import inspect
 
 __all__ = ["UNet", "Unet"]
 
 
+class CustomSequential(nn.Sequential):
+    def forward(self, x: torch.Tensor, text_embedding: torch.float16) -> torch.Tensor:
+        for module in self:
+            x = module(x, text_embedding)
+        return x
+        
 @export("monai.networks.nets")
 @alias("Unet")
 class UNet(nn.Module):
@@ -103,7 +112,6 @@ class UNet(nn.Module):
         input when downsampling, or twice when upsampling. In this case with N numbers of layers in the network,
         the inputs must have spatial dimensions that are all multiples of 2^N.
         Usually, applying `resize`, `pad` or `crop` transforms can help adjust the spatial size of input data.
-
     """
 
     def __init__(
@@ -171,11 +179,11 @@ class UNet(nn.Module):
 
             if len(channels) > 2:
                 subblock = _create_block(c, c, channels[1:], strides[1:], False)  # continue recursion down
-                upc = c * 2
+                upc = c * 2 #+ 1      # this + 1 is added by Hemin for the text embedding
             else:
                 # the next layer is the bottom so stop recursion, create the bottom layer as the sublock for this layer
                 subblock = self._get_bottom_layer(c, channels[1])
-                upc = c + channels[1]
+                upc = c + channels[1] #+ 1      # this + 1 is added by Hemin for the text embedding
 
             down = self._get_down_layer(inc, c, s, is_top)  # create layer in downsampling path
             up = self._get_up_layer(upc, outc, s, is_top)  # create layer in upsampling path
@@ -183,6 +191,12 @@ class UNet(nn.Module):
             return self._get_connection_block(down, up, subblock)
 
         self.model = _create_block(in_channels, out_channels, self.channels, self.strides, True)
+
+        # # Get the parameters of the forward method
+        # forward_parameters = inspect.signature(self.model.forward).parameters
+        # # Print the names of the parameters
+        # parameter_names = list(forward_parameters.keys())
+        # print(f"Forward method parameter names: {parameter_names}")
 
     def _get_connection_block(self, down_path: nn.Module, up_path: nn.Module, subblock: nn.Module) -> nn.Module:
         """
@@ -195,7 +209,7 @@ class UNet(nn.Module):
             subblock: block defining the next layer in the network.
         Returns: block for this layer: `nn.Sequential(down_path, SkipConnection(subblock), up_path)`
         """
-        return nn.Sequential(down_path, SkipConnection(subblock), up_path)
+        return CustomSequential(down_path, SkipConnection(subblock), up_path)
 
     def _get_down_layer(self, in_channels: int, out_channels: int, strides: int, is_top: bool) -> nn.Module:
         """
@@ -210,7 +224,9 @@ class UNet(nn.Module):
             is_top: True if this is the top block.
         """
         mod: nn.Module
+
         if self.num_res_units > 0:
+            
             mod = ResidualUnit(
                 self.dimensions,
                 in_channels,
@@ -225,6 +241,7 @@ class UNet(nn.Module):
                 adn_ordering=self.adn_ordering,
             )
             return mod
+
         mod = Convolution(
             self.dimensions,
             in_channels,
@@ -297,8 +314,8 @@ class UNet(nn.Module):
         return conv
 
     def forward(self, x: torch.Tensor, text_embedding: torch.float16) -> torch.Tensor:
-        print(text_embedding.shape, text_embedding.dtype)
-        x = self.model(x)
+        #print(text_embedding.shape, text_embedding.dtype)
+        x = self.model(x, text_embedding)
         return x
 
 

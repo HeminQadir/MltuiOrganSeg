@@ -70,11 +70,11 @@ def trainer(model, text_embedding, train_loader, val_loader, optimizer, loss_fun
         epoch_loss = 0
         step = 0
         
+        print(device)
         for batch_data in train_loader:
             step += 1
-            
+        
             inputs = batch_data["image"].to(device)
-
             labels = batch_data["label"].to(device)
             labels = labels != 0 # This is very important
 
