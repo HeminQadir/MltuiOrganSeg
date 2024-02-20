@@ -21,7 +21,8 @@ import torch.nn as nn
 from .acti_norm import ADN
 from monai.networks.layers.convutils import same_padding, stride_minus_kernel_padding
 #from monai.networks.layers.factories import Conv
-from .factories import Conv
+from .factories import Conv, FC
+
 
 class Convolution(nn.Sequential):
     """
@@ -159,7 +160,6 @@ class Convolution(nn.Sequential):
         if act is None and norm is None and dropout is None:
             return
         
-
         self.add_module(
             "adn",
             ADN(
@@ -174,11 +174,9 @@ class Convolution(nn.Sequential):
         )
 
 
-    def forward(self, x: torch.Tensor, text_embedding: torch.float16) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         cx: torch.Tensor = self.conv(x)  # apply x to sequence of operations
-        return cx  
-
-
+        return cx  # add the residual to the output
 
 class ResidualUnit(nn.Module):
     """
@@ -322,7 +320,89 @@ class ResidualUnit(nn.Module):
             self.residual = conv_type(in_channels, out_channels, rkernel_size, strides, rpadding, bias=bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        print("I am in transpose .......")
         res: torch.Tensor = self.residual(x)  # create the additive residual from x
         cx: torch.Tensor = self.conv(x)  # apply x to sequence of operations
         return cx + res  # add the residual to the output
+
+
+class CustomSequential(nn.Sequential):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        for module in self:
+            x = module(x)
+        return x
+
+class Embedding(nn.Sequential):
+    def __init__(
+        self, 
+        spatial_dims: int,
+        resolution: int, 
+        is_top: bool,
+        adn_ordering: str = "NDA",
+        act: tuple | str | None = "PRELU",
+        norm: tuple | str | None = "INSTANCE",
+        dropout: tuple | str | float | None = None,
+        dropout_dim: int | None = 1,
+        bias: bool = True,) -> None:
+
+        super().__init__()
+        self.resolution = resolution
+        self.spatial_dims = spatial_dims
+        self.embed: nn.Module
+    
+        if is_top:
+            layer_type = FC[FC.FC, self.spatial_dims]
+            self.embed = layer_type(512, self.resolution*self.resolution*self.resolution)
+        else: 
+            layer_type = Conv[Conv.CONVTRANS, self.spatial_dims]
+            self.embed = layer_type(1, 1, kernel_size=2, stride=2, padding=0, bias=bias)
+        
+        self.add_module("embed", self.embed)
+
+        if is_top:
+            return
+        
+        self.add_module(
+            "adn",
+            ADN(
+                ordering=adn_ordering,
+                in_channels=1,
+                act=act,
+                norm=norm,
+                norm_dim=self.spatial_dims,
+                dropout=dropout,
+                dropout_dim=dropout_dim,
+            ),
+        )
+        
+    def forward(self, text_embedding: torch.float16):
+        x = self.embed(text_embedding)
+        return x
+
+
+class UpsampleNetwork(nn.Module):
+    def __init__(self, resolution):
+        super(UpsampleNetwork, self).__init__()
+        self.resolution = resolution
+
+        # Define linear layers for initial upsampling
+        self.fc1 = nn.Linear(512, resolution*resolution*resolution)
+        self.prelu1 = nn.PReLU()
+
+        # Define transpose convolution layers for upsampling
+        self.conv_transpose1 = nn.ConvTranspose3d(1, 1, kernel_size=2, stride=2, padding=0)
+        self.prelu2 = nn.PReLU()
+
+        self.conv_transpose2 = nn.ConvTranspose3d(1, 1, kernel_size=2, stride=2, padding=0)
+        self.prelu3 = nn.PReLU()
+
+    def forward(self, x) -> torch.Tensor:
+        # Upsample the text embedding
+        x = self.prelu1(self.fc1(x))
+    
+        x = x.view(-1, 1, self.resolution, self.resolution, self.resolution)  # Reshape to 1x12x12x12
+        
+        x = self.prelu2(self.conv_transpose1(x))  # Upsample to 1x24x24x24
+
+        x = self.prelu3(self.conv_transpose2(x)) # Upsample to 1x48x48x48
+
+        return x

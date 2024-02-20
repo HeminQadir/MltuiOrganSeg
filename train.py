@@ -90,7 +90,7 @@ train_loader, val_loader = data_loader_and_transforms(train_files, val_files, sp
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 # Check for GPU and set it if available 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 
 # standard PyTorch program style: create UNet, DiceLoss and Adam optimizer
@@ -100,7 +100,7 @@ model = UNet(
     out_channels=2,
     channels=(16, 32, 64, 128, 256),
     strides=(2, 2, 2, 2),
-    num_res_units=0,
+    num_res_units=2,
     norm=Norm.BATCH,
 ).to(device)
 
@@ -153,6 +153,7 @@ if do_clip:
     text_embedding = clip_model.encode_text(text_input)
 else:
     text_embedding = "I am here to saty"
+
 # it is important to take a look at this 
 #txt_model = TextEncoder(out_channels=1)
 #print(txt_model())

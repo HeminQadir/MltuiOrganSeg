@@ -18,22 +18,38 @@ import torch
 import torch.nn as nn
 
 #from monai.networks.blocks.convolutions import Convolution, ResidualUnit
-from .convoluions import Convolution, ResidualUnit
+from .convoluions import Convolution, ResidualUnit, Embedding, UpsampleNetwork
 from monai.networks.layers.factories import Act, Norm
 #from monai.networks.layers.simplelayers import SkipConnection
 from .simplelayers import SkipConnection
 from monai.utils import alias, export
 import inspect
 
+
 __all__ = ["UNet", "Unet"]
 
 
+def forward_attributes(module):
+    print("*"*40)
+    # Get the parameters of the forward method
+    forward_parameters = inspect.signature(module.forward).parameters
+    # Print the names of the parameters
+    parameter_names = list(forward_parameters.keys())
+    print(f"Forward method parameter names: {parameter_names}")
+    print("*"*40)
+
+
 class CustomSequential(nn.Sequential):
-    def forward(self, x: torch.Tensor, text_embedding: torch.float16) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         for module in self:
-            x = module(x, text_embedding)
+            print("#"*40)
+            forward_attributes(module)
+            print(module)
+            
+            x = module(x)
         return x
-        
+
+
 @export("monai.networks.nets")
 @alias("Unet")
 class UNet(nn.Module):
@@ -105,6 +121,9 @@ class UNet(nn.Module):
             strides=(2, 2, 2, 2),
         )
 
+    .. deprecated:: 0.6.0
+        ``dimensions`` is deprecated, use ``spatial_dims`` instead.
+
     Note: The acceptable spatial size of input data depends on the parameters of the network,
         to set appropriate spatial size, please check the tutorial for more details:
         https://github.com/Project-MONAI/tutorials/blob/master/modules/UNet_input_size_constrains.ipynb.
@@ -112,6 +131,7 @@ class UNet(nn.Module):
         input when downsampling, or twice when upsampling. In this case with N numbers of layers in the network,
         the inputs must have spatial dimensions that are all multiples of 2^N.
         Usually, applying `resize`, `pad` or `crop` transforms can help adjust the spatial size of input data.
+
     """
 
     def __init__(
@@ -158,7 +178,8 @@ class UNet(nn.Module):
         self.bias = bias
         self.adn_ordering = adn_ordering
 
-        def _create_block(
+
+        def _orignal_create_block(
             inc: int, outc: int, channels: Sequence[int], strides: Sequence[int], is_top: bool
         ) -> nn.Module:
             """
@@ -179,6 +200,39 @@ class UNet(nn.Module):
 
             if len(channels) > 2:
                 subblock = _create_block(c, c, channels[1:], strides[1:], False)  # continue recursion down
+                upc = c * 2
+            else:
+                # the next layer is the bottom so stop recursion, create the bottom layer as the sublock for this layer
+                subblock = self._get_bottom_layer(c, channels[1])
+                upc = c + channels[1]
+
+            down = self._get_down_layer(inc, c, s, is_top)  # create layer in downsampling path
+            up = self._get_up_layer(upc, outc, s, is_top)  # create layer in upsampling path
+
+            return self._get_connection_block(down, up, subblock)
+
+
+        def _create_block(
+            inc: int, outc: int, org_channels: Sequence[int], channels: Sequence[int], strides: Sequence[int], is_top: bool
+        ) -> nn.Module:
+            """
+            Builds the UNet structure from the bottom up by recursing down to the bottom block, then creating sequential
+            blocks containing the downsample path, a skip connection around the previous block, and the upsample path.
+
+            Args:
+                inc: number of input channels.
+                outc: number of output channels.
+                channels: sequence of channels. Top block first.
+                strides: convolution stride.
+                is_top: True if this is the top block.
+            """
+            c = channels[0]
+            s = strides[0]
+
+            subblock: nn.Module
+            
+            if len(channels) > 2:
+                subblock = _create_block(c, c, org_channels, channels[1:], strides[1:], False)  # continue recursion down
                 upc = c * 2 #+ 1      # this + 1 is added by Hemin for the text embedding
             else:
                 # the next layer is the bottom so stop recursion, create the bottom layer as the sublock for this layer
@@ -188,15 +242,37 @@ class UNet(nn.Module):
             down = self._get_down_layer(inc, c, s, is_top)  # create layer in downsampling path
             up = self._get_up_layer(upc, outc, s, is_top)  # create layer in upsampling path
 
-            return self._get_connection_block(down, up, subblock)
+            #the first itreation in the recursion
+            if len(channels) == 2:       
+                text_net = self._get_text_net(12, is_top=True)
+                print("#"*50)
+                print(text_net)
+                return self._get_connection_block_text(down, up, subblock, text_net)
+    
+            # this is the last layer, no need for embedding
+            elif len(channels) == len(org_channels):    
+                 return self._get_connection_block(down, up, subblock)
+            else:   
+                text_net = self._get_text_net(12, is_top=False)
+                print("#"*50)
+                print(text_net)
+                return self._get_connection_block_text(down, up, subblock, text_net)
 
-        self.model = _create_block(in_channels, out_channels, self.channels, self.strides, True)
 
-        # # Get the parameters of the forward method
-        # forward_parameters = inspect.signature(self.model.forward).parameters
-        # # Print the names of the parameters
-        # parameter_names = list(forward_parameters.keys())
-        # print(f"Forward method parameter names: {parameter_names}")
+        self.model = _create_block(in_channels, out_channels, self.channels, self.channels, self.strides, True)
+
+    def _get_connection_block_text(self, down_path: nn.Module, up_path: nn.Module, subblock: nn.Module, text_net: nn.Module) -> nn.Module:
+        """
+        Returns the block object defining a layer of the UNet structure including the implementation of the skip
+        between encoding (down) and decoding (up) sides of the network.
+
+        Args:
+            down_path: encoding half of the layer
+            up_path: decoding half of the layer
+            subblock: block defining the next layer in the network.
+        Returns: block for this layer: `nn.Sequential(down_path, SkipConnection(subblock), up_path)`
+        """
+        return CustomSequential(down_path, SkipConnection(subblock), up_path, text_net)  #nn.Sequentialdown_path, SkipConnection(subblock), up_path)  #
 
     def _get_connection_block(self, down_path: nn.Module, up_path: nn.Module, subblock: nn.Module) -> nn.Module:
         """
@@ -209,7 +285,26 @@ class UNet(nn.Module):
             subblock: block defining the next layer in the network.
         Returns: block for this layer: `nn.Sequential(down_path, SkipConnection(subblock), up_path)`
         """
-        return CustomSequential(down_path, SkipConnection(subblock), up_path)
+        return CustomSequential(down_path, SkipConnection(subblock), up_path)  #nn.Sequential(down_path, SkipConnection(subblock), up_path)  #
+
+
+    def _get_text_net(self, resolution, is_top=False) -> nn.Module:
+        txt_mod: nn.Module
+        txt_mod = Embedding(
+            self.dimensions, 
+            resolution, 
+            is_top, 
+            act=self.act,
+            norm=self.norm,
+            dropout=self.dropout,
+            bias=self.bias,
+            adn_ordering=self.adn_ordering)  #.to(torch.float16)
+        return txt_mod
+    
+    def _get_text_net_old(self, resolution, is_top=False) -> nn.Module:
+        txt_mod: nn.Module
+        txt_mod = UpsampleNetwork(resolution).to(torch.float16)
+        return txt_mod
 
     def _get_down_layer(self, in_channels: int, out_channels: int, strides: int, is_top: bool) -> nn.Module:
         """
@@ -224,9 +319,7 @@ class UNet(nn.Module):
             is_top: True if this is the top block.
         """
         mod: nn.Module
-
         if self.num_res_units > 0:
-            
             mod = ResidualUnit(
                 self.dimensions,
                 in_channels,
@@ -241,7 +334,6 @@ class UNet(nn.Module):
                 adn_ordering=self.adn_ordering,
             )
             return mod
-
         mod = Convolution(
             self.dimensions,
             in_channels,
@@ -277,7 +369,7 @@ class UNet(nn.Module):
             strides: convolution stride.
             is_top: True if this is the top block.
         """
-        conv: Convolution | nn.Sequential
+        conv: Convolution | MySequential #nn.Sequential
 
         conv = Convolution(
             self.dimensions,
@@ -309,13 +401,19 @@ class UNet(nn.Module):
                 last_conv_only=is_top,
                 adn_ordering=self.adn_ordering,
             )
-            conv = nn.Sequential(conv, ru)
+            conv = MySequential(conv, ru) #nn.Sequential(conv, ru)
 
         return conv
 
     def forward(self, x: torch.Tensor, text_embedding: torch.float16) -> torch.Tensor:
         #print(text_embedding.shape, text_embedding.dtype)
-        x = self.model(x, text_embedding)
+        x = self.model(x) #, text_embedding)
+        return x
+
+class MySequential(nn.Sequential):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        for module in self:
+            x = module(x)
         return x
 
 

@@ -20,7 +20,7 @@ def validation(model, text_embedding, writer, epoch, val_loader, device, post_pr
             val_inputs = val_data["image"].to(device)
             val_labels = val_data["label"].to(device)
 
-            val_labels = val_labels != 0 # This is very important 
+            #val_labels = val_labels != 0 # This is very important 
 
             val_outputs = sliding_window_inference(val_inputs, text_embedding, roi_size, sw_batch_size, model)
 
@@ -70,13 +70,12 @@ def trainer(model, text_embedding, train_loader, val_loader, optimizer, loss_fun
         epoch_loss = 0
         step = 0
         
-        print(device)
         for batch_data in train_loader:
             step += 1
         
             inputs = batch_data["image"].to(device)
             labels = batch_data["label"].to(device)
-            labels = labels != 0 # This is very important
+            #labels = labels != 0 # This is very important
 
             optimizer.zero_grad()
             outputs = model(inputs, text_embedding)

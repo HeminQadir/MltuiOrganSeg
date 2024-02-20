@@ -87,7 +87,7 @@ def data_loader_and_transforms(train_files, val_files, spatial_size, pix_dim, a_
         val_ds = Dataset(data=val_files, transform=val_transforms)
 
 
-    train_loader = DataLoader(train_ds, batch_size=2, shuffle=True, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_ds, batch_size=1, shuffle=True, num_workers=4, pin_memory=True)
     val_loader = DataLoader(val_ds, batch_size=1, shuffle=True, num_workers=4, pin_memory=True)
     
 

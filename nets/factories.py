@@ -70,7 +70,7 @@ import torch.nn as nn
 from monai.networks.utils import has_nvfuser_instance_norm
 from monai.utils import look_up_option, optional_import
 
-__all__ = ["LayerFactory", "Dropout", "Norm", "Act", "Conv", "Pool", "Pad", "split_args"]
+__all__ = ["LayerFactory", "Dropout", "Norm", "Act", "Conv", "FC", "Pool", "Pad", "split_args"]
 
 
 class LayerFactory:
@@ -199,6 +199,7 @@ Dropout = LayerFactory()
 Norm = LayerFactory()
 Act = LayerFactory()
 Conv = LayerFactory()
+FC = LayerFactory()
 Pool = LayerFactory()
 Pad = LayerFactory()
 
@@ -319,6 +320,12 @@ def geglu_factory():
 @Conv.factory_function("conv")
 def conv_factory(dim: int) -> type[nn.Conv1d | nn.Conv2d | nn.Conv3d]:
     types = (nn.Conv1d, nn.Conv2d, nn.Conv3d)
+    return types[dim - 1]
+
+
+@FC.factory_function("fc")
+def fc_factory(dim: int) -> type[nn.Linear | nn.Linear | nn.Linear]:
+    types = (nn.Linear, nn.Linear, nn.Linear)
     return types[dim - 1]
 
 
